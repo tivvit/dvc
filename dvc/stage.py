@@ -656,9 +656,13 @@ class Stage(object):
         return m
 
     def save(self):
-        for dep in self.deps:
-            dep.save()
+        # TODO FIX
+        # logger.debug(self.deps)
+        # for dep in self.deps:
+        #     logger.debug(type(dep), dep)
+        #     dep.save()
 
+        logger.debug(self.outs)
         for out in self.outs:
             out.save()
 
@@ -802,8 +806,10 @@ class Stage(object):
                     self._run()
 
         if not dry:
+            logger.debug("saving")
             self.save()
             if not no_commit:
+                logger.debug("commit")
                 self.commit()
 
     def check_missing_outputs(self):

@@ -16,6 +16,7 @@ def imp(self, url, out, resume=False):
     with self.state:
         stage.run(resume=resume)
 
+    print(stage)
     stage.dump()
 
     return stage

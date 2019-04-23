@@ -307,27 +307,67 @@ class RemoteS3(RemoteBase):
             )
             logger.debug(msg)
 
-            tmp_file = tmp_fname(to_info["path"])
-            if not name:
-                name = os.path.basename(to_info["path"])
+            # tmp_file = tmp_fname(to_info["path"])
+            # if not name:
+            #     name = os.path.basename(to_info["path"])
 
-            makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
+            # makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
 
             try:
-                if no_progress_bar:
-                    cb = None
-                else:
-                    total = s3.head_object(
-                        Bucket=from_info["bucket"], Key=from_info["path"]
-                    )["ContentLength"]
-                    cb = Callback(name, total)
+                paginator = s3.get_paginator("list_objects")
+                for result in paginator.paginate(
+                    Bucket=from_info["bucket"],
+                    # Delimiter='/',
+                    Prefix=from_info["path"],
+                ):
+                    # logger.info("Common prefixes {}".format(result.get('CommonPrefixes')))
+                    # if result.get('CommonPrefixes') is not None:
+                    #     for subdir in result.get('CommonPrefixes'):
+                    #         logger.info("Subdir {}".format(subdir))
+                    #         # download_dir(client, resource, subdir.get('Prefix'),
+                    #         #              local, bucket)
+                    for file in result.get("Contents", []):
+                        try:
+                            # logger.info("File {}".format(file))
+                            key = file.get("Key")
+                            save_file = "{}/{}".format(to_info["path"], key)
+                            tmp_file = tmp_fname(save_file)
 
-                s3.download_file(
-                    from_info["bucket"],
-                    from_info["path"],
-                    tmp_file,
-                    Callback=cb,
-                )
+                            # if not name:
+                            name = key  # os.path.basename(key)
+                            # logger.info(key)
+                            # logger.info(os.path.dirname("{}/{}".format(to_info[
+                            #                                                "path"], key)))
+                            makedirs(os.path.dirname(save_file), exist_ok=True)
+                            # dest_pathname = os.path.join(local, file.get('Key'))
+                            # if not os.path.exists(os.path.dirname(dest_pathname)):
+                            #     os.makedirs(os.path.dirname(dest_pathname))
+                            # resource.meta.client.download_file(bucket,
+                            #                                    file.get('Key'),
+                            #                                    dest_pathname)
+
+                            if no_progress_bar:
+                                cb = None
+                            else:
+                                total = s3.head_object(
+                                    Bucket=from_info["bucket"], Key=key
+                                )["ContentLength"]
+                                cb = Callback(name, total)
+
+                            s3.download_file(
+                                from_info["bucket"], key, tmp_file, Callback=cb
+                            )
+
+                            move(tmp_file, save_file)
+
+                            if not no_progress_bar:
+                                progress.finish_target(name)
+                        except Exception:
+                            msg = "failed to download '{}/{}'".format(
+                                from_info["bucket"], key
+                            )
+                            logger.exception(msg)
+                            continue
             except Exception:
                 msg = "failed to download '{}/{}'".format(
                     from_info["bucket"], from_info["path"]
@@ -335,7 +375,7 @@ class RemoteS3(RemoteBase):
                 logger.exception(msg)
                 continue
 
-            move(tmp_file, to_info["path"])
+            # move(tmp_file, to_info["path"])
 
-            if not no_progress_bar:
-                progress.finish_target(name)
+            # if not no_progress_bar:
+            #     progress.finish_target(name)

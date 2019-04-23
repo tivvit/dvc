@@ -169,6 +169,7 @@ class OutputBase(object):
         return bool(self.status())
 
     def save(self):
+        # todo may be path (not file)
         if not self.exists:
             raise self.DoesNotExistError(self)
 
